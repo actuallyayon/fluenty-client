@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://fluenty-server.vercel.app/api/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
