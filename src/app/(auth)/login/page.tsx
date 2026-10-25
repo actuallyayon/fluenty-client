@@ -41,15 +41,9 @@ export default function LoginPage() {
       }
 
       // Check session user role for role-based redirect
-      const session = await authClient.getSession();
-      const user = session.data?.user as { role?: string } | undefined;
-
-      if (user?.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
-      router.refresh();
+      const user = (result.data as any)?.user;
+      const targetUrl = user?.role === 'admin' ? '/admin' : '/dashboard';
+      window.location.href = targetUrl;
     } catch (err: unknown) {
       console.error('Login error:', err);
       setErrorMessage(

@@ -43,8 +43,7 @@ export default function SignupPage() {
       }
 
       // New users automatically redirect to /dashboard
-      router.push('/dashboard');
-      router.refresh();
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
       console.error('Signup error:', err);
       setErrorMessage(
