@@ -40,7 +40,7 @@ export default function ListeningDirectoryPage() {
     }
 
     if (session?.user) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/listening/items`, {
+      fetch('/api/practice/listening/items', {
         credentials: 'include',
       })
         .then((res) => res.json())

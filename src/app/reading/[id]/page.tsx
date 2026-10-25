@@ -101,7 +101,7 @@ function ReadingTestRunner() {
     }
 
     if (passageId && session?.user) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/reading/passages/${passageId}`, {
+      fetch(`/api/practice/reading/passages/${passageId}`, {
         credentials: 'include',
       })
         .then((res) => res.json())
@@ -116,7 +116,7 @@ function ReadingTestRunner() {
         .finally(() => setLoading(false));
 
       // Fetch user bookmarks
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/learning/bookmarks`, {
+      fetch('/api/learning/bookmarks', {
         credentials: 'include',
       })
         .then((res) => res.json())
@@ -150,7 +150,7 @@ function ReadingTestRunner() {
 
   const handleToggleBookmark = async (questionId: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/learning/bookmarks/toggle`, {
+      const res = await fetch('/api/learning/bookmarks/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -185,7 +185,7 @@ function ReadingTestRunner() {
       const timeSpent = Math.max(1, totalTime - timeRemainingSeconds);
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/reading/passages/${passage.id}/submit`,
+        `/api/practice/reading/passages/${passage.id}/submit`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -231,7 +231,7 @@ function ReadingTestRunner() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/ai/explain`,
+        '/api/ai/explain',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -47,10 +47,7 @@ export default function MockExamsDirectoryPage() {
     if (session?.user) {
       const fetchExams = async () => {
         try {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/mock-exams`,
-            { credentials: 'include' }
-          );
+          const res = await fetch('/api/mock-exams', { credentials: 'include' });
           const data = await res.json();
           if (data.success && data.exams) {
             setExams(data.exams);

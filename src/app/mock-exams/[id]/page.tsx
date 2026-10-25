@@ -357,14 +357,8 @@ function MockExamRunnerContent() {
       const initExam = async () => {
         try {
           const [examRes, startRes] = await Promise.all([
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/mock-exams/${examId}`,
-              { credentials: 'include' }
-            ),
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/mock-exams/${examId}/start`,
-              { method: 'POST', credentials: 'include' }
-            ),
+            fetch(`/api/mock-exams/${examId}`, { credentials: 'include' }),
+            fetch(`/api/mock-exams/${examId}/start`, { method: 'POST', credentials: 'include' }),
           ]);
 
           const examData = await examRes.json();
@@ -422,7 +416,7 @@ function MockExamRunnerContent() {
       }));
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/mock-exams/attempts/${attemptId}/section`,
+        `/api/mock-exams/attempts/${attemptId}/section`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -462,7 +456,7 @@ function MockExamRunnerContent() {
       }));
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/mock-exams/attempts/${attemptId}/section`,
+        `/api/mock-exams/attempts/${attemptId}/section`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -496,7 +490,7 @@ function MockExamRunnerContent() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/mock-exams/attempts/${attemptId}/section`,
+        `/api/mock-exams/attempts/${attemptId}/section`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -581,7 +575,7 @@ function MockExamRunnerContent() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/mock-exams/attempts/${attemptId}/section`,
+        `/api/mock-exams/attempts/${attemptId}/section`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

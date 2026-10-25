@@ -88,7 +88,7 @@ function WritingWorkbenchContent() {
       const fetchPrompt = async () => {
         try {
           const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/writing/prompts/${promptId}`,
+            `/api/writing/prompts/${promptId}`,
             { credentials: 'include' }
           );
           const data = await res.json();
@@ -136,7 +136,7 @@ function WritingWorkbenchContent() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/writing/prompts/${promptId}/submit`,
+        `/api/writing/prompts/${promptId}/submit`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -59,14 +59,8 @@ export default function WritingDirectoryPage() {
       const fetchData = async () => {
         try {
           const [promptsRes, submissionsRes] = await Promise.all([
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/writing/prompts`,
-              { credentials: 'include' }
-            ),
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/writing/submissions`,
-              { credentials: 'include' }
-            ),
+            fetch('/api/writing/prompts', { credentials: 'include' }),
+            fetch('/api/writing/submissions', { credentials: 'include' }),
           ]);
 
           const promptsData = await promptsRes.json();

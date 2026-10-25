@@ -38,7 +38,7 @@ export default function PricingPage() {
   // Fetch current user profile to see if already premium
   useEffect(() => {
     if (session?.user) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/me`, {
+      fetch('/api/me', {
         credentials: 'include',
       })
         .then((r) => r.json())
@@ -73,7 +73,7 @@ export default function PricingPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/payments/checkout/stripe`,
+        '/api/payments/checkout/stripe',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -103,7 +103,7 @@ export default function PricingPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/payments/checkout/local`,
+        '/api/payments/checkout/local',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

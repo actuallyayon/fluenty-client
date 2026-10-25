@@ -110,7 +110,7 @@ function ListeningTestRunner() {
     }
 
     if (itemId && session?.user) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/listening/items/${itemId}`, {
+      fetch(`/api/practice/listening/items/${itemId}`, {
         credentials: 'include',
       })
         .then((res) => res.json())
@@ -124,7 +124,7 @@ function ListeningTestRunner() {
         .finally(() => setLoading(false));
 
       // Fetch bookmarks
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/learning/bookmarks`, {
+      fetch('/api/learning/bookmarks', {
         credentials: 'include',
       })
         .then((res) => res.json())
@@ -247,7 +247,7 @@ function ListeningTestRunner() {
 
   const handleToggleBookmark = async (questionId: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/learning/bookmarks/toggle`, {
+      const res = await fetch('/api/learning/bookmarks/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -284,7 +284,7 @@ function ListeningTestRunner() {
       const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000));
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/listening/items/${item.id}/submit`,
+        `/api/practice/listening/items/${item.id}/submit`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -328,7 +328,7 @@ function ListeningTestRunner() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/ai/explain`,
+        '/api/ai/explain',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

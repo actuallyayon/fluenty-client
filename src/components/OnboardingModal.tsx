@@ -29,7 +29,7 @@ export default function OnboardingModal({ isOpen, onComplete }: OnboardingModalP
     setError(null);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/onboarding`, {
+      const res = await fetch('/api/user/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

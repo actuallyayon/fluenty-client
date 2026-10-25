@@ -55,14 +55,8 @@ export default function SpeakingDirectoryPage() {
       const fetchData = async () => {
         try {
           const [cuesRes, sessionsRes] = await Promise.all([
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/speaking/cues`,
-              { credentials: 'include' }
-            ),
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/speaking/sessions`,
-              { credentials: 'include' }
-            ),
+            fetch('/api/speaking/cues', { credentials: 'include' }),
+            fetch('/api/speaking/sessions', { credentials: 'include' }),
           ]);
 
           const cuesData = await cuesRes.json();

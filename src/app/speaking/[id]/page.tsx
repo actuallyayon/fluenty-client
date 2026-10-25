@@ -221,7 +221,7 @@ function SpeakingSimulationContent() {
 
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/speaking/sessions/${currentSId}/message`,
+          `/api/speaking/sessions/${currentSId}/message`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -583,7 +583,7 @@ function SpeakingSimulationContent() {
       const initSession = async () => {
         try {
           const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/speaking/sessions/start`,
+            '/api/speaking/sessions/start',
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -679,7 +679,7 @@ function SpeakingSimulationContent() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/speaking/sessions/${sessionId}/finish`,
+        `/api/speaking/sessions/${sessionId}/finish`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

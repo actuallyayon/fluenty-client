@@ -40,7 +40,7 @@ export default function ReadingDirectoryPage() {
     }
 
     if (session?.user) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/reading/passages`, {
+      fetch('/api/practice/reading/passages', {
         credentials: 'include',
       })
         .then((res) => res.json())

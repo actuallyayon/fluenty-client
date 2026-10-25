@@ -66,7 +66,7 @@ function MistakeNotebookContent() {
       if (filterStatus === 'resolved') params.set('resolved', 'true');
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/mistakes?${params.toString()}`,
+        `/api/practice/mistakes?${params.toString()}`,
         { credentials: 'include' }
       );
       const data = await res.json();
@@ -94,7 +94,7 @@ function MistakeNotebookContent() {
   const handleToggleResolve = async (mistakeId: string) => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/mistakes/${mistakeId}/resolve`,
+        `/api/practice/mistakes/${mistakeId}/resolve`,
         { method: 'PATCH', credentials: 'include' }
       );
       const data = await res.json();
@@ -113,7 +113,7 @@ function MistakeNotebookContent() {
   const handleDeleteMistake = async (mistakeId: string) => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/mistakes/${mistakeId}`,
+        `/api/practice/mistakes/${mistakeId}`,
         { method: 'DELETE', credentials: 'include' }
       );
       const data = await res.json();

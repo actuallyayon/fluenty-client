@@ -81,7 +81,7 @@ export default function DashboardPage() {
     }
 
     if (session?.user) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/me`, {
+      fetch('/api/me', {
         credentials: 'include',
       })
         .then((res) => res.json())
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         .finally(() => setLoadingProfile(false));
 
       // Fetch recent attempts for practice feed
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/practice/attempts?limit=5`, {
+      fetch('/api/practice/attempts?limit=5', {
         credentials: 'include',
       })
         .then((res) => res.json())

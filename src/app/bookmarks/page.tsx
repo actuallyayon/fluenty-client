@@ -23,7 +23,7 @@ interface BookmarkItem {
   item: any;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = '';
 
 export default function BookmarksPage() {
   const { lang, t } = useLanguage();

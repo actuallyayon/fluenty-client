@@ -16,7 +16,7 @@ import {
   Quote,
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = '';
 
 export default function AdminAiGenerator({ onContentPublished }: { onContentPublished?: () => void }) {
   const { lang, t } = useLanguage();
