@@ -1,5 +1,8 @@
 # fluenty-client
 
+> **Live Deployment:** [https://fluenty-client.vercel.app](https://fluenty-client.vercel.app)  
+> **Backend API:** [https://fluenty-server.vercel.app](https://fluenty-server.vercel.app)
+
 Next.js frontend application for Fluenty — an IELTS preparation platform tailored specifically for Bangla speakers.
 
 ## Features
