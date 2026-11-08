@@ -226,7 +226,8 @@ function MockExamRunnerContent() {
       }
 
       const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
+      const savedAccent = (typeof window !== 'undefined' && localStorage.getItem('fluenty_speaking_accent')) || 'en-IN';
+      recognition.lang = savedAccent;
       recognition.interimResults = true;
       recognition.continuous = true;
 
@@ -246,7 +247,7 @@ function MockExamRunnerContent() {
         for (let i = 0; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript + ' ';
         }
-        const cleaned = transcript.trim();
+        let cleaned = transcript.trim();
 
         // Echo protection: Drop if matching recent examiner utterance
         if (
@@ -254,6 +255,17 @@ function MockExamRunnerContent() {
           cleaned.toLowerCase().includes(mockCurrentExaminerUtterance.slice(0, 15).toLowerCase())
         ) {
           return;
+        }
+
+        // Smart name phonetic resolution for candidate's registered name
+        const userFullName = (session?.user?.name || '').trim();
+        if (userFullName) {
+          if (userFullName.toLowerCase().includes('ayon')) {
+            cleaned = cleaned.replace(/\b(?:iron|ion|i own|eye on|a on)\b/gi, 'Ayon');
+            cleaned = cleaned.replace(/(?:name is|call me|i am|this is)\s+(?:i am|iron|ion|i own|eye on|a on)\b/gi, (match) => {
+              return match.replace(/\b(?:i am|iron|ion|i own|eye on|a on)\b/i, 'Ayon');
+            });
+          }
         }
 
         setSpeakingInput(cleaned);

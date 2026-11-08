@@ -31,6 +31,7 @@ import {
   FileText,
   Play,
   Radio,
+  Globe,
 } from 'lucide-react';
 
 interface SpeakingFeedback {
@@ -80,6 +81,27 @@ function SpeakingSimulationContent() {
   const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [chatTextInput, setChatTextInput] = useState('');
+
+  // Candidate Speech Recognition Accent (default: en-IN for Bangladeshi & South Asian English)
+  const [accentLang, setAccentLang] = useState<string>('en-IN');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fluenty_speaking_accent');
+      if (saved) setAccentLang(saved);
+    }
+  }, []);
+
+  const handleAccentChange = (code: string) => {
+    setAccentLang(code);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fluenty_speaking_accent', code);
+    }
+    if (isRecognitionActiveRef.current) {
+      stopRecognition();
+      setTimeout(() => startRecognition(), 200);
+    }
+  };
 
   // Part 2 Cue card prep timer
   const [prepTimeRemaining, setPrepTimeRemaining] = useState<number | null>(null);
@@ -229,6 +251,7 @@ function SpeakingSimulationContent() {
             body: JSON.stringify({
               candidateAnswer: trimmed,
               part: currentPartRef.current,
+              candidateName: session?.user?.name || '',
             }),
           }
         );
@@ -352,7 +375,7 @@ function SpeakingSimulationContent() {
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
+      recognition.lang = accentLang || 'en-IN';
       recognition.interimResults = true;
       recognition.continuous = true;
 
@@ -373,13 +396,25 @@ function SpeakingSimulationContent() {
           fullTranscript += event.results[i][0].transcript + ' ';
         }
 
-        const cleaned = fullTranscript.trim();
+        let cleaned = fullTranscript.trim();
         // Prevent acoustic echo from self-feeding examiner's questions
         if (
           currentExaminerUtteranceRef.current &&
           cleaned.toLowerCase().includes(currentExaminerUtteranceRef.current.slice(0, 15).toLowerCase())
         ) {
           return;
+        }
+
+        // Smart name phonetic resolution for candidate's registered name
+        const userFullName = (session?.user?.name || '').trim();
+        if (userFullName) {
+          // Normalize common speech-to-text slips for Bangla names (e.g. Ayon misheard as "iron", "ion", "i own", "eye on", "i am", "a on")
+          if (userFullName.toLowerCase().includes('ayon')) {
+            cleaned = cleaned.replace(/\b(?:iron|ion|i own|eye on|a on)\b/gi, 'Ayon');
+            cleaned = cleaned.replace(/(?:name is|call me|i am|this is)\s+(?:i am|iron|ion|i own|eye on|a on)\b/gi, (match) => {
+              return match.replace(/\b(?:i am|iron|ion|i own|eye on|a on)\b/i, 'Ayon');
+            });
+          }
         }
 
         latestTranscriptRef.current = cleaned;
@@ -588,7 +623,7 @@ function SpeakingSimulationContent() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ cueCardId }),
+              body: JSON.stringify({ cueCardId, candidateName: session?.user?.name || '' }),
             }
           );
           const data = await res.json();
@@ -1044,24 +1079,54 @@ function SpeakingSimulationContent() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-tr from-[#0F4C5C]/5 via-[#2DD4BF]/5 to-[#D96B27]/5 rounded-full blur-3xl pointer-events-none" />
 
                 {/* Top Info Header */}
-                <div className="w-full flex items-center justify-between text-xs text-[#59656D] dark:text-[#8E9FA5] z-10">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/80 dark:bg-[#142024]/80 border border-[#EAE5DB] dark:border-[#23353B] backdrop-blur-sm shadow-xs">
-                    <Radio className="w-3.5 h-3.5 text-[#0F4C5C] dark:text-[#2DD4BF] animate-pulse" />
-                    <span className="font-semibold text-[#0F2E35] dark:text-[#EDE8DF]">
-                      {lang === 'bn'
-                        ? 'হ্যান্ডস-ফ্রি লাইভ ভয়েস (কথা থামলে স্বয়ংক্রিয়ভাবে পাঠানো হবে)'
-                        : 'Hands-Free Live Voice (Auto-sends when you pause)'}
-                    </span>
+                <div className="w-full flex flex-wrap items-center justify-between gap-3 text-xs text-[#59656D] dark:text-[#8E9FA5] z-10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/80 dark:bg-[#142024]/80 border border-[#EAE5DB] dark:border-[#23353B] backdrop-blur-sm shadow-xs">
+                      <Radio className="w-3.5 h-3.5 text-[#0F4C5C] dark:text-[#2DD4BF] animate-pulse" />
+                      <span className="font-semibold text-[#0F2E35] dark:text-[#EDE8DF]">
+                        {lang === 'bn'
+                          ? 'হ্যান্ডস-ফ্রি লাইভ ভয়েস'
+                          : 'Hands-Free Live Voice'}
+                      </span>
+                    </div>
+
+                    {/* Accent Selector Badge */}
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 dark:bg-[#142024]/90 border border-[#D4CDBC] dark:border-[#2F454C] text-[11px] shadow-xs">
+                      <Globe className="w-3.5 h-3.5 text-[#D96B27]" />
+                      <span className="font-medium text-[#59656D] dark:text-[#8E9FA5]">
+                        {lang === 'bn' ? 'অ্যাকসেন্ট:' : 'Accent:'}
+                      </span>
+                      <select
+                        value={accentLang}
+                        onChange={(e) => handleAccentChange(e.target.value)}
+                        className="bg-transparent font-bold text-[#0F2E35] dark:text-[#F3EFE6] focus:outline-none cursor-pointer"
+                        title="Speech recognition accent model"
+                      >
+                        <option value="en-IN">🇧🇩 South Asian / Bangla (Recommended)</option>
+                        <option value="en-GB">🇬🇧 British English (UK)</option>
+                        <option value="en-US">🇺🇸 American English (US)</option>
+                        <option value="en-AU">🇦🇺 Australian English (AU)</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowTranscriptDrawer(!showTranscriptDrawer)}
-                    className="btn-secondary btn-sm flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-[#0F4C5C] dark:text-[#2DD4BF]" />
-                    <span>{messages.length} {lang === 'bn' ? 'বার্তা' : 'turns'}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {session?.user?.name && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F4C5C] dark:text-[#2DD4BF] bg-[#0F4C5C]/5 dark:bg-[#2DD4BF]/10 px-2.5 py-1 rounded-full border border-[#0F4C5C]/10 dark:border-[#2DD4BF]/20">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Candidate: {session.user.name}</span>
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowTranscriptDrawer(!showTranscriptDrawer)}
+                      className="btn-secondary btn-sm flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-[#0F4C5C] dark:text-[#2DD4BF]" />
+                      <span>{messages.length} {lang === 'bn' ? 'বার্তা' : 'turns'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Central Living Voice Orb Component */}
@@ -1076,17 +1141,49 @@ function SpeakingSimulationContent() {
                 />
 
                 {/* Bottom Call Controls Suite */}
-                <div className="w-full max-w-lg flex flex-wrap items-center justify-center gap-3 sm:gap-4 pt-5 border-t border-[#EAE5DB] dark:border-[#23353B] z-10">
+                <div className="w-full max-w-lg flex flex-col items-center justify-center gap-3 pt-5 border-t border-[#EAE5DB] dark:border-[#23353B] z-10">
                   {!hasStartedCall ? (
-                    /* Initial Connect Button to unlock browser audio policy cleanly */
-                    <button
-                      type="button"
-                      onClick={handleStartCall}
-                      className="btn-primary-teal text-sm py-3 px-8 font-bold flex items-center gap-2.5 shadow-lg cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-white" />
-                      <span>{lang === 'bn' ? 'কথা বলা শুরু করুন (Start Live Call)' : 'Connect & Start Live Interview'}</span>
-                    </button>
+                    <div className="w-full flex flex-col items-center gap-3.5">
+                      {/* Accent & Candidate Pre-call Helper Card */}
+                      <div className="w-full max-w-md p-3.5 rounded-2xl bg-white/90 dark:bg-[#142024]/90 border border-[#EAE5DB] dark:border-[#23353B] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-[#0F4C5C]/10 dark:bg-[#2DD4BF]/10 flex items-center justify-center text-lg">
+                            {accentLang === 'en-IN' ? '🇧🇩' : accentLang === 'en-GB' ? '🇬🇧' : accentLang === 'en-US' ? '🇺🇸' : '🇦🇺'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-[#0F2E35] dark:text-[#EDE8DF]">
+                              {lang === 'bn' ? 'মাইক্রোফোন অ্যাকসেন্ট মডেল' : 'Microphone Accent Tuning'}
+                            </p>
+                            <p className="text-[11px] text-[#59656D] dark:text-[#8E9FA5]">
+                              {accentLang === 'en-IN'
+                                ? (lang === 'bn' ? 'বাংলা ভাষাভাষীদের উচ্চারণ ও নামের জন্য অপ্টিমাইজড' : 'Tuned for Bangla speakers & local names')
+                                : (lang === 'bn' ? 'আন্তর্জাতিক অ্যাকসেন্ট মডেল' : 'Standard international speech model')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <select
+                          value={accentLang}
+                          onChange={(e) => handleAccentChange(e.target.value)}
+                          className="px-2.5 py-1.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#101A1E] font-semibold text-xs text-[#0F2E35] dark:text-[#F3EFE6] focus:outline-none focus:ring-1 focus:ring-[#0F4C5C] cursor-pointer shadow-xs"
+                        >
+                          <option value="en-IN">🇧🇩 South Asian / Bangla (en-IN)</option>
+                          <option value="en-GB">🇬🇧 British English (en-GB)</option>
+                          <option value="en-US">🇺🇸 American English (en-US)</option>
+                          <option value="en-AU">🇦🇺 Australian English (en-AU)</option>
+                        </select>
+                      </div>
+
+                      {/* Initial Connect Button */}
+                      <button
+                        type="button"
+                        onClick={handleStartCall}
+                        className="btn-primary-teal text-sm py-3 px-8 font-bold flex items-center gap-2.5 shadow-lg cursor-pointer"
+                      >
+                        <Play className="w-4 h-4 fill-white" />
+                        <span>{lang === 'bn' ? 'কথা বলা শুরু করুন (Start Live Call)' : 'Connect & Start Live Interview'}</span>
+                      </button>
+                    </div>
                   ) : (
                     <>
                       {/* Mute / Unmute Button */}
