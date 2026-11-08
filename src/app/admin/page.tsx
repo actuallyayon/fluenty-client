@@ -32,6 +32,7 @@ import {
   TrendingUp,
   DollarSign,
   CreditCard,
+  ArrowRight,
 } from 'lucide-react';
 import AdminAiGenerator from '@/components/AdminAiGenerator';
 
@@ -384,6 +385,63 @@ export default function AdminPage() {
       }
     } catch (err) {
       setErrorMsg('Failed to delete passage');
+    }
+  };
+
+  // ==========================================
+  // Listening CRUD Handlers
+  // ==========================================
+  const handleDeleteListening = async (id: string, title?: string) => {
+    if (!confirm(`Are you sure you want to delete "${title || 'this listening test'}"? This will permanently remove the test and all attached questions.`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/listening/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        showToast('Listening test deleted successfully');
+        loadTabData();
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.error || 'Failed to delete listening test');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to delete listening test');
+    }
+  };
+
+  // ==========================================
+  // Writing & Speaking Handlers
+  // ==========================================
+  const handleDeleteWritingPrompt = async (id: string, title?: string) => {
+    if (!confirm(`Are you sure you want to delete "${title || 'this writing prompt'}"?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/writing-prompts/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        showToast('Writing prompt deleted successfully');
+        loadTabData();
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to delete writing prompt');
+    }
+  };
+
+  const handleDeleteSpeakingCue = async (id: string, topic?: string) => {
+    if (!confirm(`Are you sure you want to delete "${topic || 'this speaking cue card'}"?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/speaking-cues/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        showToast('Speaking cue card deleted successfully');
+        loadTabData();
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to delete speaking cue');
     }
   };
 
@@ -1298,30 +1356,87 @@ export default function AdminPage() {
         {/* TAB 5: LISTENING */}
         {activeTab === 'listening' && (
           <div className="space-y-4">
-            <h2 className="font-heading font-bold text-lg text-[#0F2E35] dark:text-[#F3EFE6]">
-              IELTS Listening Modules
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {listeningList.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white dark:bg-[#142024] p-5 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] shadow-xs space-y-2"
-                >
-                  <span className="text-[10px] font-bold text-[#D96B27] dark:text-[#FB923C] uppercase">
-                    Section {item.section}
-                  </span>
-                  <h3 className="font-heading font-bold text-base text-[#0F2E35] dark:text-[#F3EFE6]">
-                    {item.title}
-                  </h3>
-                  <div className="text-xs font-mono text-[#0F4C5C] dark:text-[#2DD4BF] truncate">
-                    {item.audioUrl}
-                  </div>
-                  <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] line-clamp-2">
-                    {item.transcript}
-                  </p>
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-heading font-bold text-lg text-[#0F2E35] dark:text-[#F3EFE6]">
+                  IELTS Listening Modules ({listeningList.length})
+                </h2>
+                <p className="text-xs text-[#59656D] dark:text-[#8E9FA5]">
+                  Manage, preview, and delete published listening tests and questions
+                </p>
+              </div>
             </div>
+
+            {listeningList.length === 0 ? (
+              <div className="bg-white dark:bg-[#142024] p-8 rounded-2xl border border-dashed border-[#D4CDBC] dark:border-[#2F454C] text-center text-xs text-[#59656D] dark:text-[#8E9FA5]">
+                No listening tests found.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {listeningList.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white dark:bg-[#142024] p-5 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] shadow-xs space-y-3 flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-[#D96B27] dark:text-[#FB923C] uppercase px-2 py-0.5 rounded bg-[#FAF2EB] dark:bg-[#351B0F]">
+                            Section {item.section}
+                          </span>
+                          {item.hasMap && (
+                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60">
+                              Map Labelling
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Top Delete Icon */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteListening(item.id, item.title)}
+                          className="p-1.5 rounded-lg text-[#8E9FA5] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                          title="Delete listening test"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <h3 className="font-heading font-bold text-base text-[#0F2E35] dark:text-[#F3EFE6]">
+                        {item.title}
+                      </h3>
+                      <div className="text-xs font-mono text-[#0F4C5C] dark:text-[#2DD4BF] truncate">
+                        {item.audioUrl}
+                      </div>
+                      <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] line-clamp-2">
+                        {item.transcript}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#EAE5DB] dark:border-[#23353B] flex items-center justify-between text-xs">
+                      <a
+                        href={`/listening/${item.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-[#0F4C5C] dark:text-[#2DD4BF] hover:underline flex items-center gap-1"
+                      >
+                        <span>Open Test</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteListening(item.id, item.title)}
+                        className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Test</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1330,23 +1445,47 @@ export default function AdminPage() {
           <div className="space-y-6">
             <div>
               <h2 className="font-heading font-bold text-lg text-[#0F2E35] dark:text-[#F3EFE6] mb-3">
-                Writing Prompts
+                Writing Prompts ({writingList.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {writingList.map((wp) => (
                   <div
                     key={wp.id}
-                    className="bg-white dark:bg-[#142024] p-5 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] shadow-xs space-y-2"
+                    className="bg-white dark:bg-[#142024] p-5 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] shadow-xs space-y-2 flex flex-col justify-between"
                   >
-                    <span className="px-2 py-0.5 rounded bg-[#E7EFF1] dark:bg-[#16363B] text-[10px] font-bold uppercase text-[#0F4C5C] dark:text-[#2DD4BF]">
-                      {wp.taskType}
-                    </span>
-                    <h3 className="font-heading font-bold text-base text-[#0F2E35] dark:text-[#F3EFE6]">
-                      {wp.title}
-                    </h3>
-                    <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] line-clamp-3">
-                      {wp.prompt}
-                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2 py-0.5 rounded bg-[#E7EFF1] dark:bg-[#16363B] text-[10px] font-bold uppercase text-[#0F4C5C] dark:text-[#2DD4BF]">
+                          {wp.taskType}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteWritingPrompt(wp.id, wp.title)}
+                          className="p-1.5 rounded-lg text-[#8E9FA5] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                          title="Delete writing prompt"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <h3 className="font-heading font-bold text-base text-[#0F2E35] dark:text-[#F3EFE6]">
+                        {wp.title}
+                      </h3>
+                      <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] line-clamp-3">
+                        {wp.prompt}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EAE5DB] dark:border-[#23353B] flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteWritingPrompt(wp.id, wp.title)}
+                        className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1354,24 +1493,48 @@ export default function AdminPage() {
 
             <div>
               <h2 className="font-heading font-bold text-lg text-[#0F2E35] dark:text-[#F3EFE6] mb-3">
-                Speaking Cue Cards
+                Speaking Cue Cards ({speakingList.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {speakingList.map((sc) => (
                   <div
                     key={sc.id}
-                    className="bg-white dark:bg-[#142024] p-5 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] shadow-xs space-y-2"
+                    className="bg-white dark:bg-[#142024] p-5 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] shadow-xs space-y-2 flex flex-col justify-between"
                   >
-                    <span className="px-2 py-0.5 rounded bg-[#FAF2EB] dark:bg-[#351B0F] text-[10px] font-bold uppercase text-[#D96B27] dark:text-[#FB923C]">
-                      Part {sc.part} Cue Card
-                    </span>
-                    <h3 className="font-heading font-bold text-base text-[#0F2E35] dark:text-[#F3EFE6]">
-                      {sc.topic}
-                    </h3>
-                    <div className="text-xs text-[#0F4C5C] dark:text-[#2DD4BF]">{sc.topicBn}</div>
-                    <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] whitespace-pre-line line-clamp-3">
-                      {sc.cueCard}
-                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2 py-0.5 rounded bg-[#FAF2EB] dark:bg-[#351B0F] text-[10px] font-bold uppercase text-[#D96B27] dark:text-[#FB923C]">
+                          Part {sc.part} Cue Card
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSpeakingCue(sc.id, sc.topic)}
+                          className="p-1.5 rounded-lg text-[#8E9FA5] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                          title="Delete speaking cue"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <h3 className="font-heading font-bold text-base text-[#0F2E35] dark:text-[#F3EFE6]">
+                        {sc.topic}
+                      </h3>
+                      <div className="text-xs text-[#0F4C5C] dark:text-[#2DD4BF]">{sc.topicBn}</div>
+                      <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] whitespace-pre-line line-clamp-3">
+                        {sc.cueCard}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EAE5DB] dark:border-[#23353B] flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSpeakingCue(sc.id, sc.topic)}
+                        className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
