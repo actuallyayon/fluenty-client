@@ -243,25 +243,64 @@ export default function AdminPage() {
         if (wData.success) setWritingList(wData.items);
         if (sData.success) setSpeakingList(sData.items);
       } else if (activeTab === 'mock_exams') {
-        const [mRes, pRes, lRes, wRes, sRes] = await Promise.all([
-          fetch(`${API_BASE}/api/admin/mock-exams`, { credentials: 'include' }),
-          fetch(`${API_BASE}/api/admin/passages`, { credentials: 'include' }),
-          fetch(`${API_BASE}/api/admin/listening`, { credentials: 'include' }),
-          fetch(`${API_BASE}/api/admin/writing-prompts`, { credentials: 'include' }),
-          fetch(`${API_BASE}/api/admin/speaking-cues`, { credentials: 'include' }),
+        // Resiliently fetch all 5 modules independently so one slow/failing endpoint never breaks the others
+        const safeFetchJson = async (url: string) => {
+          try {
+            const res = await fetch(url, { credentials: 'include' });
+            if (!res.ok) return null;
+            return await res.json();
+          } catch {
+            return null;
+          }
+        };
+
+        const [mData, pAdminData, lAdminData, wAdminData, sAdminData] = await Promise.all([
+          safeFetchJson(`${API_BASE}/api/admin/mock-exams`),
+          safeFetchJson(`${API_BASE}/api/admin/passages?status=all`),
+          safeFetchJson(`${API_BASE}/api/admin/listening?status=all`),
+          safeFetchJson(`${API_BASE}/api/admin/writing-prompts`),
+          safeFetchJson(`${API_BASE}/api/admin/speaking-cues`),
         ]);
-        const [mData, pData, lData, wData, sData] = await Promise.all([
-          mRes.json(),
-          pRes.json(),
-          lRes.json(),
-          wRes.json(),
-          sRes.json(),
-        ]);
-        if (mData.success) setMockExamsList(mData.exams || []);
-        if (pData.success) setPassagesList(pData.items || []);
-        if (lData.success) setListeningList(lData.items || []);
-        if (wData.success) setWritingList(wData.items || []);
-        if (sData.success) setSpeakingList(sData.items || []);
+
+        // Mock Exams
+        let exams = mData?.success ? (mData.exams || mData.items || []) : [];
+        if (!exams.length) {
+          const publicExams = await safeFetchJson(`${API_BASE}/api/practice/mock-exams`);
+          if (publicExams?.success) exams = publicExams.exams || publicExams.items || [];
+        }
+        setMockExamsList(exams);
+
+        // Passages
+        let passages = pAdminData?.success ? (pAdminData.items || pAdminData.passages || []) : [];
+        if (!passages.length) {
+          const publicP = await safeFetchJson(`${API_BASE}/api/practice/reading/passages`);
+          if (publicP?.success) passages = publicP.passages || publicP.items || [];
+        }
+        setPassagesList(passages.map((p: any) => ({ ...p, id: p.id || p._id })));
+
+        // Listening
+        let listening = lAdminData?.success ? (lAdminData.items || lAdminData.listeningItems || lAdminData.modules || []) : [];
+        if (!listening.length) {
+          const publicL = await safeFetchJson(`${API_BASE}/api/practice/listening/items`);
+          if (publicL?.success) listening = publicL.items || publicL.listeningItems || [];
+        }
+        setListeningList(listening.map((l: any) => ({ ...l, id: l.id || l._id })));
+
+        // Writing
+        let writing = wAdminData?.success ? (wAdminData.items || wAdminData.prompts || []) : [];
+        if (!writing.length) {
+          const publicW = await safeFetchJson(`${API_BASE}/api/writing/prompts`);
+          if (publicW?.success) writing = publicW.prompts || publicW.items || [];
+        }
+        setWritingList(writing.map((w: any) => ({ ...w, id: w.id || w._id })));
+
+        // Speaking
+        let speaking = sAdminData?.success ? (sAdminData.items || sAdminData.cues || []) : [];
+        if (!speaking.length) {
+          const publicS = await safeFetchJson(`${API_BASE}/api/speaking/cues`);
+          if (publicS?.success) speaking = publicS.cues || publicS.items || [];
+        }
+        setSpeakingList(speaking.map((s: any) => ({ ...s, id: s.id || s._id })));
       } else if (activeTab === 'users') {
         const res = await fetch(
           `${API_BASE}/api/admin/users?search=${encodeURIComponent(searchQuery)}`,
@@ -1706,6 +1745,17 @@ export default function AdminPage() {
                       : 'Select published modules across all 4 skills to assemble an official computer-delivered mock exam.'}
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => loadTabData()}
+                  disabled={loading}
+                  className="self-start sm:self-auto px-3 py-1.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#FAF8F5] dark:hover:bg-[#1c2c31] text-xs font-semibold text-[#0F4C5C] dark:text-[#2DD4BF] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  title="Reload items from database"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  <span>{lang === 'bn' ? 'ডাটা রিলোড করুন' : 'Refresh Lists'}</span>
+                </button>
               </div>
 
               <form onSubmit={handleCreateMockExam} className="space-y-6">
@@ -1761,11 +1811,14 @@ export default function AdminPage() {
                       className="w-full px-3 py-2.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] text-xs text-[#0F2E35] dark:text-[#F3EFE6] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
                     >
                       <option value="">-- Choose Reading Passage --</option>
-                      {passagesList.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title} ({p.difficulty || 'academic'}) — {p.topic || 'General'}
-                        </option>
-                      ))}
+                      {passagesList.map((p) => {
+                        const pid = (p.id || p._id || '').toString();
+                        return (
+                          <option key={pid} value={pid}>
+                            {p.title} ({p.difficulty || 'academic'}) — {p.topic || 'General'}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -1788,11 +1841,14 @@ export default function AdminPage() {
                       className="w-full px-3 py-2.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] text-xs text-[#0F2E35] dark:text-[#F3EFE6] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
                     >
                       <option value="">-- Choose Listening Test --</option>
-                      {listeningList.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          Section {l.section}: {l.title} {l.hasMap ? '🗺️ (Map Labelling)' : ''}
-                        </option>
-                      ))}
+                      {listeningList.map((l) => {
+                        const lid = (l.id || l._id || '').toString();
+                        return (
+                          <option key={lid} value={lid}>
+                            Section {l.section || '2'}: {l.title} {l.hasMap ? '🗺️ (Map Labelling)' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -1802,6 +1858,9 @@ export default function AdminPage() {
                       <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
                         <PenTool className="w-4 h-4" />
                         <span>3A. Writing Task 1 (Report/Letter) *</span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-[#59656D] dark:text-[#8E9FA5]">
+                        {writingList.filter((w) => !w.taskType || w.taskType?.toLowerCase() === 'task1').length} Available
                       </span>
                     </div>
 
@@ -1813,12 +1872,15 @@ export default function AdminPage() {
                     >
                       <option value="">-- Choose Task 1 Prompt --</option>
                       {writingList
-                        .filter((w) => w.taskType === 'task1')
-                        .map((w) => (
-                          <option key={w.id} value={w.id}>
-                            Task 1: {w.title}
-                          </option>
-                        ))}
+                        .filter((w) => !w.taskType || w.taskType?.toLowerCase() === 'task1')
+                        .map((w) => {
+                          const wid = (w.id || w._id || '').toString();
+                          return (
+                            <option key={wid} value={wid}>
+                              Task 1: {w.title}
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
 
@@ -1828,6 +1890,9 @@ export default function AdminPage() {
                       <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
                         <PenTool className="w-4 h-4" />
                         <span>3B. Writing Task 2 (Essay) *</span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-[#59656D] dark:text-[#8E9FA5]">
+                        {writingList.filter((w) => !w.taskType || w.taskType?.toLowerCase() === 'task2').length} Available
                       </span>
                     </div>
 
@@ -1839,12 +1904,15 @@ export default function AdminPage() {
                     >
                       <option value="">-- Choose Task 2 Essay --</option>
                       {writingList
-                        .filter((w) => w.taskType === 'task2')
-                        .map((w) => (
-                          <option key={w.id} value={w.id}>
-                            Task 2: {w.title}
-                          </option>
-                        ))}
+                        .filter((w) => !w.taskType || w.taskType?.toLowerCase() === 'task2')
+                        .map((w) => {
+                          const wid = (w.id || w._id || '').toString();
+                          return (
+                            <option key={wid} value={wid}>
+                              Task 2: {w.title}
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
 
@@ -1867,11 +1935,14 @@ export default function AdminPage() {
                       className="w-full px-3 py-2.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] text-xs text-[#0F2E35] dark:text-[#F3EFE6] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
                     >
                       <option value="">-- Choose Speaking Cue Card --</option>
-                      {speakingList.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          Topic: {s.topic} ({s.topicBn})
-                        </option>
-                      ))}
+                      {speakingList.map((s) => {
+                        const sid = (s.id || s._id || '').toString();
+                        return (
+                          <option key={sid} value={sid}>
+                            {s.topic || s.title || `Speaking Cue Card #${sid.slice(-4)}`} {s.topicBn ? `(${s.topicBn})` : ''} {s.part ? `— Part ${s.part}` : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>
