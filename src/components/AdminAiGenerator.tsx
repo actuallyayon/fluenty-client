@@ -265,6 +265,7 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [taskType, setTaskType] = useState<'task1' | 'task2'>('task2');
   const [section, setSection] = useState<1 | 2 | 3 | 4>(1);
+  const [isMapTest, setIsMapTest] = useState<boolean>(false);
 
   // Status states
   const [generating, setGenerating] = useState(false);
@@ -512,7 +513,8 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
       } else if (activeGenType === 'listening') {
         endpoint = '/api/admin/ai/generate-listening';
         body.section = section;
-        body.questionCount = 3;
+        body.questionCount = isMapTest ? 5 : 3;
+        body.isMapTest = isMapTest;
       } else if (activeGenType === 'writing') {
         endpoint = '/api/admin/ai/generate-writing';
         body.taskType = taskType;
@@ -980,7 +982,9 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
               onChange={(e) => setTopic(e.target.value)}
               placeholder={
                 activeGenType === 'listening'
-                  ? 'e.g. University Accommodation Inquiry'
+                  ? isMapTest
+                    ? 'e.g. Greenwood Nature Reserve Trails and Visitor Facility Map'
+                    : 'e.g. University Accommodation Inquiry'
                   : activeGenType === 'writing'
                   ? 'e.g. Impact of Social Media on Child Psychology'
                   : 'e.g. A memorable public speaking experience'
@@ -989,6 +993,39 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
               className="w-full p-3.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-[#FAF8F5]/50 dark:bg-[#101A1E] text-[#1A252C] dark:text-[#EDE8DF] text-sm focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
             />
           </div>
+
+          {activeGenType === 'listening' && (
+            <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#101A1E] border border-[#EAE5DB] dark:border-[#23353B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Compass className="w-5 h-5 text-[#D96B27] dark:text-[#FB923C]" />
+                <div>
+                  <span className="text-xs font-bold text-[#0F2E35] dark:text-[#F3EFE6] block">
+                    Map & Plan Direction Labelling (Section 2)
+                  </span>
+                  <span className="text-[11px] text-[#59656D] dark:text-[#8E9FA5]">
+                    Generates interactive visual vector map with compass points (N, S, E, W) and landmark labelling questions (A-E)
+                  </span>
+                </div>
+              </div>
+
+              <label className="inline-flex items-center gap-2 cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={isMapTest}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsMapTest(checked);
+                    if (checked) {
+                      setSection(2);
+                      if (!topic) setTopic('Greenwood Nature Reserve Trails & Visitor Centre Map');
+                    }
+                  }}
+                  className="w-4 h-4 rounded accent-[#0F4C5C] dark:accent-[#2DD4BF]"
+                />
+                <span className="text-xs font-bold text-[#0F4C5C] dark:text-[#2DD4BF]">Enable Map Direction Test</span>
+              </label>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {activeGenType === 'listening' && (
@@ -1002,7 +1039,7 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
                   className="w-full p-3 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#101A1E] text-xs font-semibold"
                 >
                   <option value={1}>Section 1 (Social Dialogue)</option>
-                  <option value={2}>Section 2 (General Monologue)</option>
+                  <option value={2}>Section 2 (General Monologue / Map)</option>
                   <option value={3}>Section 3 (Academic Discussion)</option>
                   <option value={4}>Section 4 (University Lecture)</option>
                 </select>
@@ -1203,9 +1240,20 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
         <div className="p-6 rounded-3xl bg-white dark:bg-[#142024] border border-[#D96B27]/30 shadow-md space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE5DB] dark:border-[#23353B] pb-4">
             <div>
-              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#D96B27]/10 text-[#D96B27]">
-                Listening Section {listeningDraft.section}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#D96B27]/10 text-[#D96B27]">
+                  Listening Section {listeningDraft.section}
+                </span>
+                {listeningDraft.hasMap && (
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
+                    <Compass className="w-3 h-3" />
+                    <span>Map & Direction Labelling</span>
+                  </span>
+                )}
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
+                  ⚡ Auto AI-Speech (No manual MP3 needed)
+                </span>
+              </div>
               <h3 className="text-xl font-bold font-heading text-[#0F2E35] dark:text-[#F3EFE6] mt-1">
                 {listeningDraft.title}
               </h3>
@@ -1221,6 +1269,19 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
               <span>{publishing ? 'Publishing...' : 'Approve & Publish to Listening'}</span>
             </button>
           </div>
+
+          {listeningDraft.hasMap && listeningDraft.mapSvgData && (
+            <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#101A1E] border border-[#EAE5DB] dark:border-[#23353B] space-y-2">
+              <span className="text-xs font-bold text-[#D96B27] flex items-center gap-1.5">
+                <Compass className="w-4 h-4" />
+                <span>Generated SVG Map: {listeningDraft.mapTitle}</span>
+              </span>
+              <div
+                className="max-w-md mx-auto [&>svg]:w-full [&>svg]:h-auto [&>svg]:rounded-xl"
+                dangerouslySetInnerHTML={{ __html: listeningDraft.mapSvgData }}
+              />
+            </div>
+          )}
 
           <div className="p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#101A1E] border border-[#EAE5DB] dark:border-[#23353B] text-xs sm:text-sm leading-relaxed whitespace-pre-line max-h-64 overflow-y-auto font-mono">
             {listeningDraft.transcript}

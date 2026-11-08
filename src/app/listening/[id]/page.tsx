@@ -26,14 +26,113 @@ import {
   Sparkles,
   HelpCircle,
   Quote,
+  Compass,
+  Navigation,
+  MapPin,
+  Mic,
+  Users,
 } from 'lucide-react';
+
+interface DialogueTurn {
+  speaker: string;
+  text: string;
+  gender: 'male' | 'female' | 'neutral';
+}
+
+function parseTranscript(transcript: string): DialogueTurn[] {
+  const lines = transcript.split('\n').map((l) => l.trim()).filter(Boolean);
+  const turns: DialogueTurn[] = [];
+
+  for (const line of lines) {
+    const match = line.match(/^([A-Za-z0-9\s._'-]+):\s*(.+)$/);
+    if (match) {
+      const speakerName = match[1].trim();
+      const content = match[2].trim();
+
+      let gender: 'male' | 'female' | 'neutral' = 'neutral';
+      const lower = speakerName.toLowerCase();
+      if (/sarah|woman|female|mrs|miss|ms|emma|anna|lucy|mary|jane|chloe|alice|lisa|kate|girl|mother|daughter/i.test(lower)) {
+        gender = 'female';
+      } else if (/mark|man|male|mr|dr|john|david|peter|paul|alex|tutor|librarian|boy|father|son|henderson/i.test(lower)) {
+        gender = 'male';
+      }
+
+      turns.push({
+        speaker: speakerName,
+        text: content,
+        gender,
+      });
+    } else {
+      turns.push({
+        speaker: 'Narrator',
+        text: line,
+        gender: 'neutral',
+      });
+    }
+  }
+
+  // If dialogue has multiple speakers but genders are unassigned, alternate male and female
+  const uniqueSpeakers = Array.from(new Set(turns.map((t) => t.speaker)));
+  if (uniqueSpeakers.length > 1) {
+    const speakerGenderMap = new Map<string, 'male' | 'female'>();
+    uniqueSpeakers.forEach((spk, idx) => {
+      const existing = turns.find((t) => t.speaker === spk && t.gender !== 'neutral');
+      if (existing) {
+        speakerGenderMap.set(spk, existing.gender as 'male' | 'female');
+      } else {
+        speakerGenderMap.set(spk, idx % 2 === 0 ? 'male' : 'female');
+      }
+    });
+
+    turns.forEach((t) => {
+      if (speakerGenderMap.has(t.speaker)) {
+        t.gender = speakerGenderMap.get(t.speaker)!;
+      }
+    });
+  }
+
+  return turns;
+}
+
+function getVoiceForGender(
+  gender: 'male' | 'female' | 'neutral',
+  voices: SpeechSynthesisVoice[]
+) {
+  const englishVoices = voices.filter((v) => v.lang.startsWith('en'));
+  const pool = englishVoices.length > 0 ? englishVoices : voices;
+
+  const femaleVoices = pool.filter((v) =>
+    /female|susan|hazel|zira|samantha|victoria|karen|catherine|fiona|serena/i.test(v.name)
+  );
+  const maleVoices = pool.filter((v) =>
+    /male|george|david|daniel|arthur|oliver|james|richard|alex|fred/i.test(v.name)
+  );
+
+  let selectedVoice: SpeechSynthesisVoice | undefined;
+  let pitch = 1.0;
+
+  if (gender === 'female') {
+    selectedVoice = femaleVoices[0] || pool.find((v) => !maleVoices.includes(v)) || pool[0];
+    pitch = 1.18; // Crisp, higher feminine pitch
+  } else if (gender === 'male') {
+    selectedVoice = maleVoices[0] || pool.find((v) => !femaleVoices.includes(v)) || pool[0];
+    pitch = 0.88; // Deep, calm masculine pitch
+  } else {
+    selectedVoice = pool[0];
+    pitch = 1.0;
+  }
+
+  return { voice: selectedVoice, pitch };
+}
 
 interface QuestionItem {
   id: string;
-  type: 'multiple_choice' | 'true_false_not_given' | 'fill_in_the_blank' | 'matching_headings';
+  type: 'multiple_choice' | 'true_false_not_given' | 'fill_in_the_blank' | 'matching_headings' | 'map_labelling';
   prompt: string;
   options?: string[];
   order: number;
+  mapTitle?: string;
+  mapSvgData?: string;
 }
 
 interface ListeningDetail {
@@ -42,6 +141,9 @@ interface ListeningDetail {
   audioUrl: string;
   section: number;
   transcript?: string;
+  hasMap?: boolean;
+  mapTitle?: string;
+  mapSvgData?: string;
 }
 
 interface EvaluationResult {
@@ -88,7 +190,15 @@ function ListeningTestRunner() {
 
   // Audio Player State
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const synthUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const speechIntervalRef = useRef<any>(null);
+  const dialogueTimeoutRef = useRef<any>(null);
+  const isPlayingRef = useRef(false);
+  const currentTurnIndexRef = useRef(0);
+
+  const [isAiSpeechMode, setIsAiSpeechMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -140,10 +250,21 @@ function ListeningTestRunner() {
     }
   }, [itemId, session, isPending, router]);
 
+  // Detect AI speech synthesis mode or fallback
+  useEffect(() => {
+    if (item?.audioUrl && (item.audioUrl.startsWith('ai-speech://') || !item.audioUrl.startsWith('http'))) {
+      setIsAiSpeechMode(true);
+      if (item.transcript) {
+        const words = item.transcript.split(/\s+/).length;
+        setDuration(Math.max(30, Math.round(words / 2.3)));
+      }
+    }
+  }, [item]);
+
   // Audio element listeners
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !item) return;
+    if (!audio || !item || isAiSpeechMode) return;
 
     // Force load when item or audioUrl changes
     audio.load();
@@ -166,7 +287,10 @@ function ListeningTestRunner() {
       setCurrentTime(0);
     };
     const onError = (e: Event) => {
-      console.warn('Audio playback/load error:', e);
+      console.warn('Audio playback/load error, falling back to AI voice:', e);
+      if (item.transcript) {
+        setIsAiSpeechMode(true);
+      }
       setIsPlaying(false);
     };
 
@@ -192,9 +316,103 @@ function ListeningTestRunner() {
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('error', onError);
     };
-  }, [item]);
+  }, [item, isAiSpeechMode]);
+
+  // Cleanup speech synthesis on unmount
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+      if (dialogueTimeoutRef.current) clearTimeout(dialogueTimeoutRef.current);
+    };
+  }, []);
 
   const togglePlay = async () => {
+    // If AI Speech synthesis mode (free IELTS resource / no MP3 file needed)
+    if (isAiSpeechMode || (item && item.audioUrl?.startsWith('ai-speech://'))) {
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        alert('Browser speech synthesis is not supported in this browser.');
+        return;
+      }
+
+      if (isPlaying) {
+        window.speechSynthesis.cancel();
+        if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+        if (dialogueTimeoutRef.current) clearTimeout(dialogueTimeoutRef.current);
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        setActiveSpeaker(null);
+      } else {
+        window.speechSynthesis.cancel();
+        if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+        if (dialogueTimeoutRef.current) clearTimeout(dialogueTimeoutRef.current);
+
+        const transcriptText = item?.transcript || item?.title || 'This is the listening test audio.';
+        const turns = parseTranscript(transcriptText);
+        const voices = window.speechSynthesis.getVoices();
+
+        isPlayingRef.current = true;
+        setIsPlaying(true);
+
+        // Multi-speaker dialogue player (Alternates Male & Female voices)
+        const playTurn = (index: number) => {
+          if (!isPlayingRef.current || index >= turns.length) {
+            isPlayingRef.current = false;
+            setIsPlaying(false);
+            setActiveSpeaker(null);
+            setCurrentTime(0);
+            currentTurnIndexRef.current = 0;
+            if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+            return;
+          }
+
+          currentTurnIndexRef.current = index;
+          const turn = turns[index];
+          const genderLabel = turn.gender === 'female' ? 'Female Voice' : 'Male Voice';
+          setActiveSpeaker(`${turn.speaker} (${genderLabel})`);
+
+          const utter = new SpeechSynthesisUtterance(turn.text);
+          const { voice, pitch } = getVoiceForGender(turn.gender, voices);
+          if (voice) utter.voice = voice;
+          utter.pitch = pitch;
+          utter.rate = playbackRate;
+          synthUtteranceRef.current = utter;
+
+          utter.onend = () => {
+            if (!isPlayingRef.current) return;
+            // Realistic 320ms conversational gap between speakers
+            dialogueTimeoutRef.current = setTimeout(() => {
+              playTurn(index + 1);
+            }, 320);
+          };
+
+          utter.onerror = (err) => {
+            console.warn('Utterance playback error:', err);
+            if (!isPlayingRef.current) return;
+            dialogueTimeoutRef.current = setTimeout(() => {
+              playTurn(index + 1);
+            }, 200);
+          };
+
+          window.speechSynthesis.speak(utter);
+        };
+
+        playTurn(currentTurnIndexRef.current || 0);
+
+        speechIntervalRef.current = setInterval(() => {
+          setCurrentTime((prev) => {
+            if (duration > 0 && prev >= duration) {
+              return prev;
+            }
+            return prev + 1;
+          });
+        }, 1000);
+      }
+      return;
+    }
+
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -206,13 +424,11 @@ function ListeningTestRunner() {
         await audio.play();
         setIsPlaying(true);
       } catch (e) {
-        console.warn('Audio play error, retrying with load:', e);
-        try {
-          audio.load();
-          await audio.play();
-          setIsPlaying(true);
-        } catch (err2) {
-          console.error('Failed to play audio:', err2);
+        console.warn('Audio play error, falling back to speech synthesis:', e);
+        if (item?.transcript) {
+          setIsAiSpeechMode(true);
+          setTimeout(() => togglePlay(), 50);
+        } else {
           setIsPlaying(false);
         }
       }
@@ -221,9 +437,21 @@ function ListeningTestRunner() {
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const targetTime = parseFloat(e.target.value);
-    if (audioRef.current) {
+    setCurrentTime(targetTime);
+    if (!isAiSpeechMode && audioRef.current) {
       audioRef.current.currentTime = targetTime;
-      setCurrentTime(targetTime);
+    } else if (isAiSpeechMode && item?.transcript && duration > 0) {
+      const turns = parseTranscript(item.transcript);
+      if (turns.length > 0) {
+        const ratio = Math.min(1, Math.max(0, targetTime / duration));
+        const targetTurn = Math.min(turns.length - 1, Math.floor(ratio * turns.length));
+        currentTurnIndexRef.current = targetTurn;
+        if (isPlaying) {
+          window.speechSynthesis.cancel();
+          if (dialogueTimeoutRef.current) clearTimeout(dialogueTimeoutRef.current);
+          togglePlay();
+        }
+      }
     }
   };
 
@@ -232,9 +460,25 @@ function ListeningTestRunner() {
     if (audioRef.current) {
       audioRef.current.playbackRate = rate;
     }
+    if (isAiSpeechMode && isPlaying) {
+      window.speechSynthesis.cancel();
+      if (dialogueTimeoutRef.current) clearTimeout(dialogueTimeoutRef.current);
+      togglePlay();
+    }
   };
 
   const toggleMute = () => {
+    if (isAiSpeechMode) {
+      if (!isMuted) {
+        window.speechSynthesis.cancel();
+        if (dialogueTimeoutRef.current) clearTimeout(dialogueTimeoutRef.current);
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        setActiveSpeaker(null);
+      }
+      setIsMuted(!isMuted);
+      return;
+    }
     if (audioRef.current) {
       audioRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
@@ -418,7 +662,9 @@ function ListeningTestRunner() {
       <Navbar />
 
       {/* Hidden Native Audio Element */}
-      <audio ref={audioRef} src={item.audioUrl} preload="auto" />
+      {!isAiSpeechMode && item.audioUrl && !item.audioUrl.startsWith('ai-speech://') && (
+        <audio ref={audioRef} src={item.audioUrl} preload="auto" />
+      )}
 
       {/* Sticky Custom Audio Player Bar */}
       <div className="sticky top-18 z-40 bg-[#FBF9F5]/95 dark:bg-[#0E1619]/95 backdrop-blur-md border-b border-[#EAE5DB] dark:border-[#23353B] py-3.5 px-4 sm:px-6 shadow-xs">
@@ -433,9 +679,28 @@ function ListeningTestRunner() {
             </Link>
 
             <div className="min-w-0">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#D96B27] dark:text-[#FB923C] block">
-                IELTS Section {item.section} Audio
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#D96B27] dark:text-[#FB923C] block">
+                  IELTS Section {item.section} Audio
+                </span>
+                {(item.section === 1 || item.section === 3) ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    <Users className="w-3 h-3" />
+                    <span>Multi-Voice Dialogue (Male & Female)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Solo Monologue Voice</span>
+                  </span>
+                )}
+                {activeSpeaker && isPlaying && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800 animate-pulse">
+                    <Mic className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    <span>Speaking: {activeSpeaker}</span>
+                  </span>
+                )}
+              </div>
               <h1 className="font-heading font-bold text-sm sm:text-base text-[#0F2E35] dark:text-[#F3EFE6] truncate max-w-xs sm:max-w-md">
                 {item.title}
               </h1>
@@ -580,6 +845,72 @@ function ListeningTestRunner() {
             </span>
           </div>
 
+          {/* Visual Map / Plan Direction Diagram (For Map Labelling Tests) */}
+          {(item.hasMap || questions.some((q) => q.type === 'map_labelling')) && (
+            <div className="bg-white dark:bg-[#142024] rounded-3xl border border-[#D4CDBC] dark:border-[#2F454C] p-5 sm:p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE5DB] dark:border-[#23353B] pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-[#0F4C5C]/10 dark:bg-[#2DD4BF]/10 text-[#0F4C5C] dark:text-[#2DD4BF]">
+                    <Compass className="w-5 h-5 text-[#0F4C5C] dark:text-[#2DD4BF]" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#D96B27] dark:text-[#FB923C] block">
+                      IELTS Section 2 Map & Plan Direction
+                    </span>
+                    <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F2E35] dark:text-[#F3EFE6]">
+                      {item.mapTitle || 'Map & Facility Direction Plan'}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-xl bg-[#FAF2EB] dark:bg-[#351B0F] text-[#D96B27]">
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? 'দিকনির্দেশনা শুনুন (উত্তর, দক্ষিণ, পূর্ব, পশ্চিম)' : 'Listen for Compass Directions (N, S, E, W)'}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Map Canvas / Diagram Render */}
+              <div className="relative rounded-2xl overflow-hidden border border-[#D4CDBC] dark:border-[#2F454C] bg-[#F7F4EE] dark:bg-[#0E1619] p-4 flex flex-col items-center justify-center">
+                {item.mapSvgData ? (
+                  <div
+                    className="w-full max-w-2xl overflow-x-auto flex justify-center [&>svg]:w-full [&>svg]:max-w-xl [&>svg]:h-auto [&>svg]:rounded-xl"
+                    dangerouslySetInnerHTML={{ __html: item.mapSvgData }}
+                  />
+                ) : (
+                  <svg viewBox="0 0 600 360" className="w-full max-w-xl h-auto rounded-xl shadow-xs" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="600" height="360" fill="#E8F1EC" rx="16" />
+                    <path d="M 50 330 Q 150 200 300 200 T 550 80" fill="none" stroke="#D1B894" strokeWidth="22" strokeLinecap="round" />
+                    <path d="M 300 200 L 300 60" fill="none" stroke="#D1B894" strokeWidth="18" strokeLinecap="round" />
+                    <path d="M 300 200 L 450 300" fill="none" stroke="#D1B894" strokeWidth="18" strokeLinecap="round" />
+                    <path d="M 120 220 L 80 100" fill="none" stroke="#D1B894" strokeWidth="16" strokeLinecap="round" />
+                    <ellipse cx="440" cy="140" rx="65" ry="40" fill="#BAE6FD" stroke="#38BDF8" strokeWidth="3" />
+                    <text x="440" y="145" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#0369A1">Ornamental Pond</text>
+                    <rect x="20" y="310" width="80" height="30" rx="6" fill="#0F4C5C" />
+                    <text x="60" y="329" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#ffffff">ENTRANCE</text>
+                    <g transform="translate(540, 50)">
+                      <circle cx="0" cy="0" r="26" fill="#ffffff" stroke="#0F4C5C" strokeWidth="2" />
+                      <polygon points="0,-22 5,-5 0,0 -5,-5" fill="#EF4444" />
+                      <polygon points="0,22 5,5 0,0 -5,5" fill="#64748B" />
+                      <polygon points="22,0 5,5 0,0 5,-5" fill="#64748B" />
+                      <polygon points="-22,0 -5,5 0,0 -5,-5" fill="#64748B" />
+                      <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#B91C1C">N</text>
+                      <text x="0" y="20" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">S</text>
+                      <text x="17" y="3" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">E</text>
+                      <text x="-17" y="3" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">W</text>
+                    </g>
+                    <g transform="translate(90, 85)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">A</text></g>
+                    <g transform="translate(230, 130)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">B</text></g>
+                    <g transform="translate(300, 50)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">C</text></g>
+                    <g transform="translate(390, 240)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">D</text></g>
+                    <g transform="translate(500, 290)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">E</text></g>
+                  </svg>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Question Cards */}
           <div className="space-y-5">
             {questions.map((q, idx) => {
@@ -656,27 +987,37 @@ function ListeningTestRunner() {
                   {!submissionResult ? (
                     <div className="pt-2">
                       {q.type === 'multiple_choice' && q.options && (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {q.options.map((opt, oIdx) => {
+                            const letter = String.fromCharCode(65 + oIdx);
                             const isSelected = currentAnswer === opt;
                             return (
                               <label
                                 key={oIdx}
-                                className={`flex items-start gap-3 p-3 rounded-xl border text-xs sm:text-sm cursor-pointer transition-colors ${
+                                className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl border text-sm sm:text-base cursor-pointer transition-all ${
                                   isSelected
-                                    ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#E7EFF1]/50 dark:bg-[#16363B]/60 font-semibold text-[#0F4C5C] dark:text-[#2DD4BF]'
-                                    : 'border-[#D4CDBC] dark:border-[#2F454C] hover:bg-[#F4EFE6] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
+                                    ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C]/5 dark:bg-[#2DD4BF]/10 font-semibold text-[#0F4C5C] dark:text-[#2DD4BF] shadow-xs ring-2 ring-[#0F4C5C]/20 dark:ring-[#2DD4BF]/20 scale-[1.01]'
+                                    : 'border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#FAF8F5] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
                                 }`}
                               >
+                                <span
+                                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                                    isSelected
+                                      ? 'bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619]'
+                                      : 'bg-[#FAF2EB] dark:bg-[#23353B] text-[#D96B27] dark:text-[#FB923C]'
+                                  }`}
+                                >
+                                  {letter}
+                                </span>
                                 <input
                                   type="radio"
                                   name={`listening-q-${q.id}`}
                                   value={opt}
                                   checked={isSelected}
                                   onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                                  className="mt-0.5 accent-[#0F4C5C] dark:accent-[#2DD4BF]"
+                                  className="sr-only"
                                 />
-                                <span>{opt}</span>
+                                <span className="flex-1 leading-snug">{opt}</span>
                               </label>
                             );
                           })}
@@ -684,21 +1025,31 @@ function ListeningTestRunner() {
                       )}
 
                       {q.type === 'true_false_not_given' && (
-                        <div className="grid grid-cols-3 gap-2">
-                          {['True', 'False', 'Not Given'].map((val) => {
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {['True', 'False', 'Not Given'].map((val, vIdx) => {
                             const isSelected = currentAnswer.toLowerCase() === val.toLowerCase();
+                            const letter = ['A', 'B', 'C'][vIdx];
                             return (
                               <button
                                 key={val}
                                 type="button"
                                 onClick={() => handleAnswerChange(q.id, val)}
-                                className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                                className={`py-3 px-4 rounded-2xl border text-sm font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs ${
                                   isSelected
-                                    ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619] shadow-xs'
-                                    : 'border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#F4EFE6] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
+                                    ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619] shadow-md ring-2 ring-[#0F4C5C]/20 dark:ring-[#2DD4BF]/20 scale-[1.02]'
+                                    : 'border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#FAF8F5] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
                                 }`}
                               >
-                                {val}
+                                <span
+                                  className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 ${
+                                    isSelected
+                                      ? 'bg-white/20 text-white dark:text-[#0E1619]'
+                                      : 'bg-[#FAF2EB] dark:bg-[#23353B] text-[#D96B27] dark:text-[#FB923C]'
+                                  }`}
+                                >
+                                  {letter}
+                                </span>
+                                <span>{val}</span>
                               </button>
                             );
                           })}
@@ -712,8 +1063,36 @@ function ListeningTestRunner() {
                             value={currentAnswer}
                             onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                             placeholder={lang === 'bn' ? 'অডিও থেকে শোনা সঠিক শব্দটি লিখুন...' : 'Type word heard from audio...'}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] text-sm text-[#1A252C] dark:text-[#EDE8DF] focus:outline-hidden focus:border-[#0F4C5C] dark:focus:border-[#2DD4BF]"
+                            className="w-full px-4 py-3 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] text-sm text-[#1A252C] dark:text-[#EDE8DF] focus:outline-hidden focus:border-[#0F4C5C] dark:focus:border-[#2DD4BF]"
                           />
+                        </div>
+                      )}
+
+                      {q.type === 'map_labelling' && (
+                        <div className="space-y-2.5 pt-1">
+                          <div className="text-xs font-semibold text-[#59656D] dark:text-[#8E9FA5] flex items-center gap-1.5">
+                            <Navigation className="w-3.5 h-3.5 text-[#0F4C5C] dark:text-[#2DD4BF]" />
+                            <span>{lang === 'bn' ? 'মানচিত্রের সঠিক অক্ষরটি নির্বাচন করুন:' : 'Select location letter on map:'}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                            {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((letter) => {
+                              const isSelected = currentAnswer.toUpperCase() === letter;
+                              return (
+                                <button
+                                  key={letter}
+                                  type="button"
+                                  onClick={() => handleAnswerChange(q.id, letter)}
+                                  className={`min-w-[54px] sm:min-w-[62px] h-12 px-4 rounded-xl border text-base font-bold transition-all flex items-center justify-center cursor-pointer shadow-xs ${
+                                    isSelected
+                                      ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619] shadow-sm ring-2 ring-[#0F4C5C]/30 scale-105'
+                                      : 'border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#F4EFE6] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF] hover:border-[#0F4C5C]/40'
+                                  }`}
+                                >
+                                  {letter}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>

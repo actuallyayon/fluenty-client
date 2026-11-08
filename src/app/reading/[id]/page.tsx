@@ -615,27 +615,37 @@ function ReadingTestRunner() {
                       <div className="pt-2">
                         {/* 1. Multiple Choice */}
                         {q.type === 'multiple_choice' && q.options && (
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             {q.options.map((opt, oIdx) => {
+                              const letter = String.fromCharCode(65 + oIdx);
                               const isSelected = currentAnswer === opt;
                               return (
                                 <label
                                   key={oIdx}
-                                  className={`flex items-start gap-3 p-3 rounded-xl border text-xs sm:text-sm cursor-pointer transition-colors ${
+                                  className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl border text-sm sm:text-base cursor-pointer transition-all ${
                                     isSelected
-                                      ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#E7EFF1]/50 dark:bg-[#16363B]/60 font-semibold text-[#0F4C5C] dark:text-[#2DD4BF]'
-                                      : 'border-[#D4CDBC] dark:border-[#2F454C] hover:bg-[#F4EFE6] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
+                                      ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C]/5 dark:bg-[#2DD4BF]/10 font-semibold text-[#0F4C5C] dark:text-[#2DD4BF] shadow-xs ring-2 ring-[#0F4C5C]/20 dark:ring-[#2DD4BF]/20 scale-[1.01]'
+                                      : 'border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#FAF8F5] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
                                   }`}
                                 >
+                                  <span
+                                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                                      isSelected
+                                        ? 'bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619]'
+                                        : 'bg-[#FAF2EB] dark:bg-[#23353B] text-[#D96B27] dark:text-[#FB923C]'
+                                    }`}
+                                  >
+                                    {letter}
+                                  </span>
                                   <input
                                     type="radio"
                                     name={`q-${q.id}`}
                                     value={opt}
                                     checked={isSelected}
                                     onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                                    className="mt-0.5 accent-[#0F4C5C] dark:accent-[#2DD4BF]"
+                                    className="sr-only"
                                   />
-                                  <span>{opt}</span>
+                                  <span className="flex-1 leading-snug">{opt}</span>
                                 </label>
                               );
                             })}
@@ -644,21 +654,31 @@ function ReadingTestRunner() {
 
                         {/* 2. True / False / Not Given */}
                         {q.type === 'true_false_not_given' && (
-                          <div className="grid grid-cols-3 gap-2">
-                            {['True', 'False', 'Not Given'].map((val) => {
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {['True', 'False', 'Not Given'].map((val, vIdx) => {
                               const isSelected = currentAnswer.toLowerCase() === val.toLowerCase();
+                              const letter = ['A', 'B', 'C'][vIdx];
                               return (
                                 <button
                                   key={val}
                                   type="button"
                                   onClick={() => handleAnswerChange(q.id, val)}
-                                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                                  className={`py-3 px-4 rounded-2xl border text-sm font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs ${
                                     isSelected
-                                      ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619] shadow-xs'
-                                      : 'border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#F4EFE6] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
+                                      ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619] shadow-md ring-2 ring-[#0F4C5C]/20 dark:ring-[#2DD4BF]/20 scale-[1.02]'
+                                      : 'border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] hover:bg-[#FAF8F5] dark:hover:bg-[#1C2D33] text-[#1A252C] dark:text-[#EDE8DF]'
                                   }`}
                                 >
-                                  {val}
+                                  <span
+                                    className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 ${
+                                      isSelected
+                                        ? 'bg-white/20 text-white dark:text-[#0E1619]'
+                                        : 'bg-[#FAF2EB] dark:bg-[#23353B] text-[#D96B27] dark:text-[#FB923C]'
+                                    }`}
+                                  >
+                                    {letter}
+                                  </span>
+                                  <span>{val}</span>
                                 </button>
                               );
                             })}
@@ -672,8 +692,8 @@ function ReadingTestRunner() {
                               type="text"
                               value={currentAnswer}
                               onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                              placeholder={lang === 'bn' ? 'এখানে আপনার উত্তর টাইপ করুন...' : 'Type your answer here...'}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] text-sm text-[#1A252C] dark:text-[#EDE8DF] focus:outline-hidden focus:border-[#0F4C5C] dark:focus:border-[#2DD4BF]"
+                              placeholder={lang === 'bn' ? 'সঠিক উত্তরটি লিখুন...' : 'Type answer here...'}
+                              className="w-full px-4 py-3 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] bg-white dark:bg-[#142024] text-sm text-[#1A252C] dark:text-[#EDE8DF] focus:outline-hidden focus:border-[#0F4C5C] dark:focus:border-[#2DD4BF]"
                             />
                             <p className="text-[11px] text-[#59656D] dark:text-[#8E9FA5]">
                               {lang === 'bn'

@@ -748,25 +748,42 @@ function MockExamRunnerContent() {
                   </span>
 
                   {q.options && q.options.length > 0 ? (
-                    <div className="space-y-2">
-                      {q.options.map((opt, i) => (
-                        <label
-                          key={i}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-[#EAE5DB] dark:border-[#23353B] hover:bg-[#FAF8F5] dark:hover:bg-[#101A1E] cursor-pointer text-xs sm:text-sm"
-                        >
-                          <input
-                            type="radio"
-                            name={`listening-${q.id}`}
-                            value={opt}
-                            checked={listeningAnswers[q.id] === opt}
-                            onChange={(e) =>
-                              setListeningAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
-                            }
-                            className="text-[#0F4C5C] focus:ring-[#0F4C5C]"
-                          />
-                          <span>{opt}</span>
-                        </label>
-                      ))}
+                    <div className="space-y-3">
+                      {q.options.map((opt, i) => {
+                        const letter = String.fromCharCode(65 + i);
+                        const isSelected = listeningAnswers[q.id] === opt;
+                        return (
+                          <label
+                            key={i}
+                            className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl border text-sm cursor-pointer transition-all ${
+                              isSelected
+                                ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C]/5 dark:bg-[#2DD4BF]/10 font-semibold text-[#0F4C5C] dark:text-[#2DD4BF] ring-2 ring-[#0F4C5C]/20 dark:ring-[#2DD4BF]/20 scale-[1.01]'
+                                : 'border-[#EAE5DB] dark:border-[#23353B] bg-white dark:bg-[#142024] hover:bg-[#FAF8F5] dark:hover:bg-[#101A1E] text-[#1A252C] dark:text-[#EDE8DF]'
+                            }`}
+                          >
+                            <span
+                              className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                                isSelected
+                                  ? 'bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619]'
+                                  : 'bg-[#FAF2EB] dark:bg-[#23353B] text-[#D96B27] dark:text-[#FB923C]'
+                              }`}
+                            >
+                              {letter}
+                            </span>
+                            <input
+                              type="radio"
+                              name={`listening-${q.id}`}
+                              value={opt}
+                              checked={isSelected}
+                              onChange={(e) =>
+                                setListeningAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                              }
+                              className="sr-only"
+                            />
+                            <span className="flex-1 leading-snug">{opt}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   ) : (
                     <input
@@ -836,25 +853,42 @@ function MockExamRunnerContent() {
                     </span>
 
                     {q.options && q.options.length > 0 ? (
-                      <div className="space-y-2">
-                        {q.options.map((opt, i) => (
-                          <label
-                            key={i}
-                            className="flex items-center gap-3 p-2.5 rounded-xl border border-[#EAE5DB] dark:border-[#23353B] hover:bg-[#FAF8F5] dark:hover:bg-[#101A1E] cursor-pointer text-xs"
-                          >
-                            <input
-                              type="radio"
-                              name={`reading-${q.id}`}
-                              value={opt}
-                              checked={readingAnswers[q.id] === opt}
-                              onChange={(e) =>
-                                setReadingAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
-                              }
-                              className="text-[#0F4C5C] focus:ring-[#0F4C5C]"
-                            />
-                            <span>{opt}</span>
-                          </label>
-                        ))}
+                      <div className="space-y-3">
+                        {q.options.map((opt, i) => {
+                          const letter = String.fromCharCode(65 + i);
+                          const isSelected = readingAnswers[q.id] === opt;
+                          return (
+                            <label
+                              key={i}
+                              className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl border text-sm cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-[#0F4C5C] dark:border-[#2DD4BF] bg-[#0F4C5C]/5 dark:bg-[#2DD4BF]/10 font-semibold text-[#0F4C5C] dark:text-[#2DD4BF] ring-2 ring-[#0F4C5C]/20 dark:ring-[#2DD4BF]/20 scale-[1.01]'
+                                  : 'border-[#EAE5DB] dark:border-[#23353B] bg-white dark:bg-[#142024] hover:bg-[#FAF8F5] dark:hover:bg-[#101A1E] text-[#1A252C] dark:text-[#EDE8DF]'
+                              }`}
+                            >
+                              <span
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                                  isSelected
+                                    ? 'bg-[#0F4C5C] dark:bg-[#2DD4BF] text-white dark:text-[#0E1619]'
+                                    : 'bg-[#FAF2EB] dark:bg-[#23353B] text-[#D96B27] dark:text-[#FB923C]'
+                                }`}
+                              >
+                                {letter}
+                              </span>
+                              <input
+                                type="radio"
+                                name={`reading-${q.id}`}
+                                value={opt}
+                                checked={isSelected}
+                                onChange={(e) =>
+                                  setReadingAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                                }
+                                className="sr-only"
+                              />
+                              <span className="flex-1 leading-snug">{opt}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     ) : (
                       <input
