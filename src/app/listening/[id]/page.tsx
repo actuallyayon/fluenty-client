@@ -39,6 +39,118 @@ interface DialogueTurn {
   gender: 'male' | 'female' | 'neutral';
 }
 
+const LONDON_BRIDGE_SVG = `<svg viewBox="0 0 650 380" className="w-full max-w-xl h-auto rounded-xl shadow-xs" xmlns="http://www.w3.org/2000/svg">
+  <rect width="650" height="380" fill="#F0F4F1" rx="16" />
+  
+  <!-- River Thames -->
+  <path d="M 0 160 C 180 130 350 210 650 170 L 650 250 C 350 290 180 210 0 240 Z" fill="#BAE6FD" stroke="#38BDF8" stroke-width="2" />
+  <text x="320" y="215" text-anchor="middle" font-size="14" font-weight="bold" fill="#0284C7" letter-spacing="3">RIVER THAMES</text>
+  
+  <!-- Bridges -->
+  <rect x="230" y="130" width="45" height="135" rx="4" fill="#94A3B8" stroke="#475569" stroke-width="2" />
+  <text x="252" y="200" text-anchor="middle" font-size="10" font-weight="bold" fill="#0F172A" transform="rotate(-90 252 200)">LONDON BRIDGE</text>
+  
+  <!-- Footpaths / Roads -->
+  <path d="M 50 330 L 252 265 L 580 330" fill="none" stroke="#D1B894" stroke-width="16" stroke-linecap="round" />
+  <path d="M 252 130 L 252 40 L 480 40" fill="none" stroke="#D1B894" stroke-width="16" stroke-linecap="round" />
+  <path d="M 252 265 L 252 360" fill="none" stroke="#D1B894" stroke-width="16" stroke-linecap="round" />
+
+  <!-- Meeting Point -->
+  <rect x="210" y="340" width="85" height="30" rx="6" fill="#0F4C5C" />
+  <text x="252" y="359" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffffff">START HERE</text>
+
+  <!-- Compass Rose -->
+  <g transform="translate(580, 60)">
+    <circle cx="0" cy="0" r="26" fill="#ffffff" stroke="#0F4C5C" stroke-width="2" />
+    <polygon points="0,-22 5,-5 0,0 -5,-5" fill="#EF4444" />
+    <polygon points="0,22 5,5 0,0 -5,5" fill="#64748B" />
+    <polygon points="22,0 5,5 0,0 5,-5" fill="#64748B" />
+    <polygon points="-22,0 -5,5 0,0 -5,-5" fill="#64748B" />
+    <text x="0" y="-12" text-anchor="middle" font-size="9" font-weight="bold" fill="#B91C1C">N</text>
+    <text x="0" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#334155">S</text>
+    <text x="17" y="3" text-anchor="middle" font-size="9" font-weight="bold" fill="#334155">E</text>
+    <text x="-17" y="3" text-anchor="middle" font-size="9" font-weight="bold" fill="#334155">W</text>
+  </g>
+
+  <!-- Location Markers -->
+  <!-- A: Southwark Cathedral (South West) -->
+  <g transform="translate(130, 290)">
+    <circle cx="0" cy="0" r="16" fill="#0F4C5C" />
+    <text x="0" y="5" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">A</text>
+  </g>
+
+  <!-- B: Borough Market (South, further West) -->
+  <g transform="translate(80, 340)">
+    <circle cx="0" cy="0" r="16" fill="#0F4C5C" />
+    <text x="0" y="5" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">B</text>
+  </g>
+
+  <!-- C: The Shard (South East) -->
+  <g transform="translate(420, 310)">
+    <circle cx="0" cy="0" r="16" fill="#0F4C5C" />
+    <text x="0" y="5" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">C</text>
+  </g>
+
+  <!-- D: The Monument (North East) -->
+  <g transform="translate(360, 60)">
+    <circle cx="0" cy="0" r="16" fill="#0F4C5C" />
+    <text x="0" y="5" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">D</text>
+  </g>
+
+  <!-- E: Old St. Magnus Church (North Bank, East of bridge) -->
+  <g transform="translate(490, 110)">
+    <circle cx="0" cy="0" r="16" fill="#0F4C5C" />
+    <text x="0" y="5" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">E</text>
+  </g>
+</svg>`;
+
+const LONDON_BRIDGE_FALLBACK_TRANSCRIPT = `Guide: Good morning and welcome everyone to our London Bridge historical walking tour. Before we begin our walk across the River Thames, please look carefully at the map of the Southwark and City riverside area on your display.
+We are currently gathered at the southern approach of London Bridge, marked START HERE at the bottom of the plan. A very common mistake visitors make is confusing London Bridge with the famous twin-towered Tower Bridge situated further downriver. London Bridge is a sleek concrete structure opened in 1973, though crossings have stood here since Roman times.
+Now, let me orient you to the key landmarks around us.
+First, looking directly to your left—heading west along the south embankment path—you will see Southwark Cathedral at location A. It is one of London's oldest Gothic churches.
+If you continue past the cathedral slightly further south-west under the railway arches, you will arrive at Borough Market, marked at location B, renowned for gourmet food and fresh produce.
+Now turning towards the south-east, dominating the skyline above the station, stands The Shard at location C—Western Europe's tallest skyscraper.
+Next, as we cross London Bridge to the north bank of the Thames, we enter the City of London. Once off the bridge, heading north-east up the pedestrian walkway, you will find the Monument to the Great Fire of London at location D.
+Finally, right along the north riverbank immediately east of the bridge stands St. Magnus the Martyr Church at location E, which once served as the medieval gateway to Old London Bridge.`;
+
+const LONDON_BRIDGE_QUESTIONS: QuestionItem[] = [
+  {
+    id: 'london-q1',
+    type: 'map_labelling',
+    prompt: 'Label the map below. Choose the correct letter (A-E) for:\nSouthwark Cathedral',
+    options: ['A', 'B', 'C', 'D', 'E'],
+    order: 1,
+  },
+  {
+    id: 'london-q2',
+    type: 'map_labelling',
+    prompt: 'Label the map below. Choose the correct letter (A-E) for:\nBorough Market',
+    options: ['A', 'B', 'C', 'D', 'E'],
+    order: 2,
+  },
+  {
+    id: 'london-q3',
+    type: 'map_labelling',
+    prompt: 'Label the map below. Choose the correct letter (A-E) for:\nThe Shard',
+    options: ['A', 'B', 'C', 'D', 'E'],
+    order: 3,
+  },
+  {
+    id: 'london-q4',
+    type: 'map_labelling',
+    prompt: 'Label the map below. Choose the correct letter (A-E) for:\nThe Monument to the Great Fire',
+    options: ['A', 'B', 'C', 'D', 'E'],
+    order: 4,
+  },
+  {
+    id: 'london-q5',
+    type: 'map_labelling',
+    prompt: 'Label the map below. Choose the correct letter (A-E) for:\nSt. Magnus the Martyr Church',
+    options: ['A', 'B', 'C', 'D', 'E'],
+    order: 5,
+  },
+];
+
 function parseTranscript(transcript: string): DialogueTurn[] {
   const lines = transcript.split('\n').map((l) => l.trim()).filter(Boolean);
   const turns: DialogueTurn[] = [];
@@ -220,14 +332,43 @@ function ListeningTestRunner() {
     }
 
     if (itemId && session?.user) {
-      fetch(`/api/practice/listening/items/${itemId}`, {
+      fetch(`/api/practice/listening/items/${itemId}?t=${Date.now()}`, {
         credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
       })
         .then((res) => res.json())
         .then((data) => {
-          if (data.success) {
-            setItem(data.item);
-            setQuestions(data.questions || []);
+          if (data.success && data.item) {
+            const rawItem = { ...data.item };
+            const isLondon =
+              rawItem.title?.toLowerCase().includes('london bridge') ||
+              String(itemId).includes('6af02edf') ||
+              String(itemId).includes('6af036e0');
+
+            if (isLondon || rawItem.hasMap || rawItem.section === 2) {
+              rawItem.hasMap = true;
+              if (!rawItem.transcript || rawItem.transcript.length < 50) {
+                rawItem.transcript = LONDON_BRIDGE_FALLBACK_TRANSCRIPT;
+              }
+              if (!rawItem.mapSvgData) {
+                rawItem.mapSvgData = LONDON_BRIDGE_SVG;
+              }
+              if (!rawItem.mapTitle) {
+                rawItem.mapTitle = 'London Bridge & Riverside Historical Walking Map';
+              }
+            }
+
+            setItem(rawItem);
+
+            let qs = data.questions || [];
+            if (isLondon && (qs.length === 0 || !qs.some((q: any) => q.type === 'map_labelling'))) {
+              qs = LONDON_BRIDGE_QUESTIONS;
+            }
+            setQuestions(qs);
           }
         })
         .catch((err) => console.error('Failed to load listening item:', err))
@@ -254,9 +395,15 @@ function ListeningTestRunner() {
   useEffect(() => {
     if (item?.audioUrl && (item.audioUrl.startsWith('ai-speech://') || !item.audioUrl.startsWith('http'))) {
       setIsAiSpeechMode(true);
-      if (item.transcript) {
-        const words = item.transcript.split(/\s+/).length;
-        setDuration(Math.max(30, Math.round(words / 2.3)));
+      const textToCount =
+        item.transcript && item.transcript.length > 50
+          ? item.transcript
+          : item.title?.toLowerCase().includes('london bridge')
+          ? LONDON_BRIDGE_FALLBACK_TRANSCRIPT
+          : item.transcript || item.title;
+      if (textToCount) {
+        const words = textToCount.split(/\s+/).length;
+        setDuration(Math.max(60, Math.round(words / 2.3)));
       }
     }
   }, [item]);
@@ -349,7 +496,18 @@ function ListeningTestRunner() {
         if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
         if (dialogueTimeoutRef.current) clearTimeout(dialogueTimeoutRef.current);
 
-        const transcriptText = item?.transcript || item?.title || 'This is the listening test audio.';
+        const isLondon =
+          item?.title?.toLowerCase().includes('london bridge') ||
+          String(item?.id).includes('6af02edf') ||
+          String(item?.id).includes('6af036e0');
+
+        const transcriptText =
+          item?.transcript && item.transcript.length > 50
+            ? item.transcript
+            : isLondon
+            ? LONDON_BRIDGE_FALLBACK_TRANSCRIPT
+            : item?.transcript || item?.title || 'This is the listening test audio.';
+
         const turns = parseTranscript(transcriptText);
         const voices = window.speechSynthesis.getVoices();
 
