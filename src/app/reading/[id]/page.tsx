@@ -21,6 +21,8 @@ import {
   Sparkles,
   HelpCircle,
   Quote,
+  Newspaper,
+  ExternalLink,
 } from 'lucide-react';
 
 interface QuestionItem {
@@ -37,6 +39,11 @@ interface PassageDetail {
   content: string;
   difficulty: string;
   timeLimitMinutes: number;
+  source?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  topic?: string;
+  headlineSnippet?: string;
 }
 
 interface EvaluationResult {
@@ -477,6 +484,26 @@ function ReadingTestRunner() {
                 {passage.difficulty.toUpperCase()}
               </span>
             </div>
+
+            {passage.sourceName && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-xs">
+                <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold">
+                  <Newspaper className="w-4 h-4 shrink-0" />
+                  <span>Sourced from {passage.sourceName}</span>
+                </div>
+                {passage.sourceUrl && (
+                  <a
+                    href={passage.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-medium"
+                  >
+                    <span>Original Source</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            )}
 
             <h2 className="font-heading font-bold text-xl text-[#0F2E35] dark:text-[#F3EFE6] leading-tight">
               {passage.title}

@@ -15,6 +15,9 @@ import {
   ChevronLeft,
   Sparkles,
   BarChart,
+  Newspaper,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 
 interface PassageSummary {
@@ -24,6 +27,11 @@ interface PassageSummary {
   timeLimitMinutes: number;
   questionCount: number;
   createdAt: string;
+  source?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  topic?: string;
+  headlineSnippet?: string;
 }
 
 export default function ReadingDirectoryPage() {
@@ -32,6 +40,7 @@ export default function ReadingDirectoryPage() {
   const { data: session, isPending } = authClient.useSession();
   const [passages, setPassages] = useState<PassageSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterMode, setFilterMode] = useState<'all' | 'news' | 'academic'>('all');
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -53,6 +62,25 @@ export default function ReadingDirectoryPage() {
         .finally(() => setLoading(false));
     }
   }, [session, isPending, router]);
+
+  const filteredPassages = passages.filter((p) => {
+    if (filterMode === 'news') {
+      return (
+        p.source ||
+        (p.sourceName &&
+          (p.sourceName.toLowerCase().includes('british') ||
+            p.sourceName.toLowerCase().includes('bbc') ||
+            p.sourceName.toLowerCase().includes('guardian') ||
+            p.sourceName.toLowerCase().includes('reuters') ||
+            p.sourceName.toLowerCase().includes('star') ||
+            p.sourceName.toLowerCase().includes('news')))
+      );
+    }
+    if (filterMode === 'academic') {
+      return p.difficulty === 'academic';
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FBF9F5] dark:bg-[#0E1619] text-[#1A252C] dark:text-[#EDE8DF] transition-colors duration-200">
@@ -116,15 +144,55 @@ export default function ReadingDirectoryPage() {
           </div>
         </div>
 
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 p-1 bg-[#F4EFE6] dark:bg-[#1C2D33] rounded-xl text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setFilterMode('all')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                filterMode === 'all'
+                  ? 'bg-white dark:bg-[#142024] text-[#0F4C5C] dark:text-[#2DD4BF] shadow-xs'
+                  : 'text-[#59656D] dark:text-[#8E9FA5]'
+              }`}
+            >
+              {lang === 'bn' ? 'সব প্যাসেজ' : 'All Passages'} ({passages.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('news')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                filterMode === 'news'
+                  ? 'bg-white dark:bg-[#142024] text-[#0F4C5C] dark:text-[#2DD4BF] shadow-xs'
+                  : 'text-[#59656D] dark:text-[#8E9FA5]'
+              }`}
+            >
+              <Newspaper className="w-3.5 h-3.5 text-[#0F4C5C] dark:text-[#2DD4BF]" />
+              <span>{lang === 'bn' ? 'ব্রিটিশ কাউন্সিল ও নিউজ পোর্টাল' : 'British Council & News Portals'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('academic')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                filterMode === 'academic'
+                  ? 'bg-white dark:bg-[#142024] text-[#0F4C5C] dark:text-[#2DD4BF] shadow-xs'
+                  : 'text-[#59656D] dark:text-[#8E9FA5]'
+              }`}
+            >
+              {lang === 'bn' ? 'একাডেমিক' : 'Academic'}
+            </button>
+          </div>
+
+          <span className="text-xs text-[#59656D] dark:text-[#8E9FA5]">
+            {lang === 'bn' ? `মোট ${filteredPassages.length} টি পাওয়া গেছে` : `Showing ${filteredPassages.length} test modules`}
+          </span>
+        </div>
+
         {/* Passages List */}
         <div className="space-y-4">
-          <h2 className="font-heading text-lg font-bold text-[#0F2E35] dark:text-[#F3EFE6]">
-            {lang === 'bn' ? 'অনুশীলনের জন্য প্যাসেজ নির্বাচন করুন' : 'Select a Reading Passage'}
-          </h2>
-
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2].map((i) => (
+              {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
                   className="bg-white dark:bg-[#142024] p-6 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] animate-pulse space-y-4"
@@ -135,7 +203,7 @@ export default function ReadingDirectoryPage() {
                 </div>
               ))}
             </div>
-          ) : passages.length === 0 ? (
+          ) : filteredPassages.length === 0 ? (
             <div className="bg-white dark:bg-[#142024] p-12 rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] text-center space-y-3">
               <BookOpen className="w-10 h-10 mx-auto text-[#8E9FA5]" />
               <h3 className="font-heading font-bold text-lg">
@@ -143,22 +211,30 @@ export default function ReadingDirectoryPage() {
               </h3>
               <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] max-w-sm mx-auto">
                 {lang === 'bn'
-                  ? 'শীঘ্রই নতুন আইইএলটিএস একাডেমিক প্যাসেজ যুক্ত করা হবে।'
-                  : 'New academic reading passages will be available shortly.'}
+                  ? 'অন্য ফিল্টার নির্বাচন করুন অথবা অ্যাডমিন প্যানেল থেকে তৈরি করুন।'
+                  : 'Try selecting a different filter or generate tests from the admin panel.'}
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {passages.map((p) => (
+              {filteredPassages.map((p) => (
                 <div
                   key={p.id}
                   className="bg-white dark:bg-[#142024] rounded-2xl border border-[#D4CDBC] dark:border-[#2F454C] p-6 flex flex-col justify-between hover:border-[#0F4C5C] dark:hover:border-[#2DD4BF] transition-all shadow-xs group"
                 >
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[#E7EFF1] dark:bg-[#16363B] text-[#0F4C5C] dark:text-[#2DD4BF]">
-                        {p.difficulty}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[#E7EFF1] dark:bg-[#16363B] text-[#0F4C5C] dark:text-[#2DD4BF]">
+                          {p.difficulty}
+                        </span>
+                        {p.sourceName && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                            <Newspaper className="w-3 h-3" />
+                            <span>{p.sourceName}</span>
+                          </span>
+                        )}
+                      </div>
                       <span className="flex items-center gap-1 text-xs text-[#59656D] dark:text-[#8E9FA5]">
                         <Clock className="w-3.5 h-3.5" />
                         <span>{p.timeLimitMinutes} {lang === 'bn' ? 'মিনিট' : 'mins'}</span>
@@ -168,6 +244,12 @@ export default function ReadingDirectoryPage() {
                     <h3 className="font-heading font-bold text-lg text-[#0F2E35] dark:text-[#F3EFE6] group-hover:text-[#0F4C5C] dark:group-hover:text-[#2DD4BF] transition-colors leading-snug">
                       {p.title}
                     </h3>
+
+                    {p.topic && (
+                      <p className="text-xs text-[#59656D] dark:text-[#8E9FA5] line-clamp-1 italic">
+                        Topic: {p.topic}
+                      </p>
+                    )}
 
                     <div className="flex items-center gap-4 text-xs text-[#59656D] dark:text-[#8E9FA5] pt-1">
                       <span className="flex items-center gap-1">
@@ -183,7 +265,13 @@ export default function ReadingDirectoryPage() {
 
                   <div className="pt-6 mt-4 border-t border-[#EAE5DB] dark:border-[#23353B] flex items-center justify-between">
                     <div className="text-[11px] font-semibold text-[#59656D] dark:text-[#8E9FA5]">
-                      {lang === 'bn' ? 'টাইমার সহ সরাসরি অনুশীলন' : 'Includes live timer'}
+                      {p.sourceName ? (
+                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                          {lang === 'bn' ? 'প্রামাণ্য খবরের লাইন সমন্বিত' : 'Authentic news text'}
+                        </span>
+                      ) : (
+                        <span>{lang === 'bn' ? 'টাইমার সহ সরাসরি অনুশীলন' : 'Includes live timer'}</span>
+                      )}
                     </div>
 
                     <Link
