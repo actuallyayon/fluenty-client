@@ -1270,16 +1270,45 @@ export default function AdminAiGenerator({ onContentPublished }: { onContentPubl
             </button>
           </div>
 
-          {listeningDraft.hasMap && listeningDraft.mapSvgData && (
+          {listeningDraft.hasMap && (
             <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#101A1E] border border-[#EAE5DB] dark:border-[#23353B] space-y-2">
               <span className="text-xs font-bold text-[#D96B27] flex items-center gap-1.5">
                 <Compass className="w-4 h-4" />
-                <span>Generated SVG Map: {listeningDraft.mapTitle}</span>
+                <span>Generated SVG Map: {listeningDraft.mapTitle || 'Section 2 Map & Plan Directions'}</span>
               </span>
-              <div
-                className="max-w-md mx-auto [&>svg]:w-full [&>svg]:h-auto [&>svg]:rounded-xl"
-                dangerouslySetInnerHTML={{ __html: listeningDraft.mapSvgData }}
-              />
+              <div className="max-w-md mx-auto [&>svg]:w-full [&>svg]:h-auto [&>svg]:rounded-xl">
+                {listeningDraft.mapSvgData ? (
+                  <div dangerouslySetInnerHTML={{ __html: listeningDraft.mapSvgData }} />
+                ) : (
+                  <svg viewBox="0 0 600 360" className="w-full h-auto rounded-xl shadow-xs" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="600" height="360" fill="#E8F1EC" rx="16" />
+                    <path d="M 50 330 Q 150 200 300 200 T 550 80" fill="none" stroke="#D1B894" strokeWidth="22" strokeLinecap="round" />
+                    <path d="M 300 200 L 300 60" fill="none" stroke="#D1B894" strokeWidth="18" strokeLinecap="round" />
+                    <path d="M 300 200 L 450 300" fill="none" stroke="#D1B894" strokeWidth="18" strokeLinecap="round" />
+                    <path d="M 120 220 L 80 100" fill="none" stroke="#D1B894" strokeWidth="16" strokeLinecap="round" />
+                    <ellipse cx="440" cy="140" rx="65" ry="40" fill="#BAE6FD" stroke="#38BDF8" strokeWidth="3" />
+                    <text x="440" y="145" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#0369A1">Lake & Garden</text>
+                    <rect x="20" y="310" width="80" height="30" rx="6" fill="#0F4C5C" />
+                    <text x="60" y="329" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#ffffff">ENTRANCE</text>
+                    <g transform="translate(540, 50)">
+                      <circle cx="0" cy="0" r="26" fill="#ffffff" stroke="#0F4C5C" strokeWidth="2" />
+                      <polygon points="0,-22 5,-5 0,0 -5,-5" fill="#EF4444" />
+                      <polygon points="0,22 5,5 0,0 -5,5" fill="#64748B" />
+                      <polygon points="22,0 5,5 0,0 5,-5" fill="#64748B" />
+                      <polygon points="-22,0 -5,5 0,0 -5,-5" fill="#64748B" />
+                      <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#B91C1C">N</text>
+                      <text x="0" y="20" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">S</text>
+                      <text x="17" y="3" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">E</text>
+                      <text x="-17" y="3" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">W</text>
+                    </g>
+                    <g transform="translate(90, 85)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">A</text></g>
+                    <g transform="translate(230, 130)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">B</text></g>
+                    <g transform="translate(300, 50)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">C</text></g>
+                    <g transform="translate(390, 240)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">D</text></g>
+                    <g transform="translate(500, 290)"><circle cx="0" cy="0" r="16" fill="#0F4C5C" /><text x="0" y="5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ffffff">E</text></g>
+                  </svg>
+                )}
+              </div>
             </div>
           )}
 
